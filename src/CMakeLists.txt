@@ -1,46 +1,36 @@
 # This is the main binary. List your C files here.
-add_executable(hello_freertos hello_freertos.c)
+add_executable(lab11_server
+  picow_bt_example_freertos.c
+  gatt_counter.c
+)
 
-pico_set_program_name(hello_freertos "test")
-pico_set_program_version(hello_freertos "0.1")
-
-# Modify the below lines to enable/disable output over UART/USB. These are
-# mutually exclusive, only set one.
-pico_enable_stdio_uart(hello_freertos 0)
-pico_enable_stdio_usb(hello_freertos 1)
+target_compile_definitions(lab11_server PRIVATE
+  CYW43_TASK_STACK_SIZE=1024
+  NO_SYS=0
+)
 
 # Add the libraries to the build
-target_link_libraries(
-  hello_freertos PRIVATE pico_stdlib pico_multicore pico_async_context_freertos
-                         FreeRTOS-Kernel-Heap4)
+target_link_libraries(lab11_server PRIVATE
+  pico_stdlib
+  pico_async_context_freertos
+  pico_cyw43_arch_lwip_sys_freertos
+  FreeRTOS-Kernel-Heap4
+  pico_btstack_cyw43
+  pico_btstack_ble
+  hardware_adc
+)
 
-# The CYW43 is the Wifi/Bluetooth module. If the board is set to pico_w, this
-# variable will be set and the wireless libraries added.
-if(PICO_CYW43_SUPPORTED)
-  # For led support on pico_w
-  target_link_libraries(hello_freertos PRIVATE pico_cyw43_arch_none)
-endif()
+pico_btstack_make_gatt_header(lab11_server PUBLIC ${CMAKE_SOURCE_DIR}/include/gatt_counter.gatt)
 
-# Another pico macro which generates the uf2 file in addition to the elf
-pico_add_extra_outputs(hello_freertos)
+pico_set_program_name(lab11_server "server")
+pico_set_program_version(lab11_server "0.1")
 
-find_program(OPENOCD openocd)
-find_program(PICOTOOL picotool)
+# Modify the below lines to enable/disable output over UART/USB.
+# These are mutually exclusive, only set one.
+pico_enable_stdio_uart(lab11_server 0)
+pico_enable_stdio_usb(lab11_server 1)
 
-add_custom_target(
-  flash
-  ${PICOTOOL} load -f $<TARGET_FILE:hello_freertos>
-  DEPENDS hello_freertos)
+pico_add_extra_outputs(lab11_server)
 
-add_custom_target(
-  openocd_flash
-  ${OPENOCD}
-  -s
-  ${OPENOCD_PATH}
-  -f
-  interface/cmsis-dap.cfg
-  -f
-  target/rp2040.cfg
-  -c
-  'adapter speed 5000; program "$<TARGET_FILE:hello_freertos>" verify reset exit'
-  DEPENDS hello_freertos)
+
+add_custom_target(flash_server picotool load -f $<TARGET_FILE:lab11_server> DEPENDS lab11_server)
